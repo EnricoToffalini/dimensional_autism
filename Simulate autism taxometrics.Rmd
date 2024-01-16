@@ -13,6 +13,8 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 ```
 
+The present set of simulation studies suggests that taxometric analysis works well in detecting the dimensional structure of a population when the sample is representative the population (Study 1). In incurs false positive result (incorrectly favoring a category structure) when diagnosed cases are deliberately oversampled (Study 3). Somehow surprisingly, it also incur false positive results when the sample is representative of a portion of the population (upper tail; Study 2).
+
 --------------------------------------------
 --------------------------------------------
 
@@ -168,6 +170,10 @@ Now let's run the taxometric analysis.
 --------------------------------------------
 --------------------------------------------
 
+## CONCLUSIONS
 
+As said above, results suggest that taxometric analysis works well in detecting the dimensional structure of a population when the sample is representative the population (Study 1). In incurs false positive result (incorrectly favoring a category structure) when diagnosed cases are deliberately oversampled (Study 3). Somehow surprisingly, it also incur false positive results when the sample is representative of a portion of the population (upper tail; Study 2). But of course, I might have got something wrong!
 
+--------------------------------------------
+--------------------------------------------
 

@@ -1,7 +1,7 @@
 ---
 title: "Dimensional autism"
 subtitle: "- Taxometric analysis"
-author: "enrico toffalini @psicostat"
+author: "enrico toffalini @psicostat @m&llab"
 date: "January 16th, 2024"
 output: html_document
 ---

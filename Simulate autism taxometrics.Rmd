@@ -1,0 +1,173 @@
+---
+title: "Dimensional autism"
+subtitle: "- Taxometric analysis"
+author: "enrico toffalini @psicostat"
+date: "January 16th, 2024"
+output: html_document
+---
+\raggedright
+\break\break
+
+```{r setup-knitr, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+```
+
+--------------------------------------------
+--------------------------------------------
+
+### Initial general setup
+
+```{r setup-general} 
+rm(list=ls())
+library(RTaxometrics)
+library(effsize)
+
+set.seed(0)
+```
+
+--------------------------------------------
+--------------------------------------------
+
+## GENERATE A DIMENSIONAL POPULATION
+
+Let's create a large population of 10^6^ individuals. In it, there is an "autistic trait" varying dimensionally and continuously, distributed as a standard Normal. 
+
+```{r, cache=T}
+Npop = 1e6
+realAutism = rnorm(Npop,0,1)
+
+```
+
+Since this trait is *latent*, it cannot be observed. So, let's assume that all individuals undergo an assessment measuring 3 diagnostic indexes that reflect the real trait with some noise. They are simulated as follows. The correlation between each pair of indices turns out to be *r* = 0.80.
+
+```{r, cache=T}
+index1 = scale(realAutism + rnorm(Npop,0,0.5))
+index2 = scale(realAutism + rnorm(Npop,0,0.5))
+index3 = scale(realAutism + rnorm(Npop,0,0.5))
+round(cor(cbind(index1,index2,index3)),2)
+```
+
+Now let's put the indexes in a data frame, and let's simulate the diagnostic process. Diagnosis is done dimensionally: if the combined mean score in the 3 indexes is in the top 5% quantile, the individual gets a diagnosis ("2", while nondiagnosed individuals are "1").
+
+```{r, cache=T}
+pop = data.frame(index1,index2,index3)
+pop$indexTot = rowMeans(pop[,c("index1","index2","index3")])
+pop$diagn = ifelse(pop$indexTot>quantile(pop$indexTot,.95),2,1)
+```
+
+Finally, let's simulate a set of 5 indicators (x1 to x5) that are affected by the latent autistic trait, but more loosely than the previous 3 indexes (i.e., there is more noise here). The 5 indicators correlate *r* = 0.31 with each other.
+
+
+```{r, cache=T}
+pop$x1 = scale(realAutism + rnorm(Npop,0,1.5))
+pop$x2 = scale(realAutism + rnorm(Npop,0,1.5))
+pop$x3 = scale(realAutism + rnorm(Npop,0,1.5))
+pop$x4 = scale(realAutism + rnorm(Npop,0,1.5))
+pop$x5 = scale(realAutism + rnorm(Npop,0,1.5))
+round(cor(pop[,c("x1","x2","x3","x4","x5")]),2)
+```
+
+Finally, let's have a look at how largely these indicators differ between individuals diagnosed vs nondiagnosed with autism. Let's use x1 (the other are identically related to the autistic trait). 
+
+```{r, cache=T}
+(cd = cohen.d(pop$x1 ~ pop$diagn))
+```
+
+The Cohen's d turn out to be *d* = `r round(cd$estimate,2)`.
+
+--------------------------------------------
+--------------------------------------------
+
+## STUDY 1: DRAW A REPRESENTATIVE SAMPLE
+
+In Study 1 we draw a large representative sample (N = 20000) from the general population and we run taxometric analysis on it, using the five indicators x1 to x5.
+
+First, we randomly draw the sample from the population.
+
+```{r study-1-draw-sample, cache=T}
+N = 20000
+
+selected = sample(1:nrow(pop),N)
+df = pop[selected,]
+```
+
+Second, we look at how many "cases" and how many "controls" were drawn. They are pretty much in line with the overall population (where diagnosed children are exactly 5%).
+
+```{r study-1-see-cases, cache=T}
+table(df$diagn)
+```
+
+Finally, let's run the taxometric analysis.
+
+```{r study-1-run-taxometrics, cache=T}
+
+(rt_study1 = RunTaxometrics(df[,c("x1","x2","x3","x4","x5","diagn")]))
+```
+
+**So, in Study 1 the resulting mean CCFI is `r round(rt_study1$CCFI.mean,2)`, thus favoring a dimensional structure (which is correct, because a dimensional structure is the ground truth).**
+
+--------------------------------------------
+--------------------------------------------
+
+## STUDY 2: DRAW A REPRESENTATIVE SAMPLE OF THE UPPER TAIL OF THE CURVE (z > +0.5)
+
+In Study 2 we draw a large sample (N = 20000) that is representative of the upper half of the population only (i.e., where the combined index1, index2, index3, is z > +0.5) and once again we run taxometric analysis on it, using the five indicators x1 to x5.
+
+First, let's randomly sample the cases. Given the inclusion criterion, the share of diagnosed cases in the sample is now obviously larger than in Study 1.
+
+```{r study-2-draw-sample, cache=T}
+N = 20000
+
+pop$zscore = scale(rowSums(pop[,c("index1","index2","index3")]))
+pop_upper = pop[pop$zscore > +0.5,]
+
+selected = sample(1:nrow(pop_upper),N)
+df = pop_upper[selected,]
+
+table(df$diagn)
+```
+
+Now let's run the taxometric analysis.
+
+```{r study-2-run-taxometrics, cache=T}
+(rt_study2 = RunTaxometrics(df[,c("x1","x2","x3","x4","x5","diagn")]))
+```
+
+**So, in Study 2 the resulting mean CCFI is `r round(rt_study2$CCFI.mean,2)`, thus incorrectly favoring a categorical structure.**
+
+--------------------------------------------
+--------------------------------------------
+
+## STUDY 3: DRAW A SAMPLE WHERE PREVIOUSLY IDENTIFIED DIAGNOSED CASES ARE DELIBERATELY OVERSAMPLED (AND THEY REPRESENT ABOUT 50% OF THE OVERALL TESTED SAMPLE)
+
+In Study 3 we draw a large sample (N = 20000) that is deliberately unbalanced: individuals with a diagnosis (`diagn=="2"`) are sample separately from those without a diagnosis (`diagn==1`). To do so, a much heavier probability sampling weight is used for diagnosed individuals. The weight is chosen to ensure that about 50% of the overall sample will be represented by individuals with a diagnosis.
+
+First, let's randomly sample the cases. Given the inclusion criteria, the share of diagnosed cases in the sample is about half.
+
+```{r study-3-draw-sample, cache=T}
+N = 20000
+prob = ifelse(pop$diagn==2,20,1)
+
+selected = sample(1:nrow(pop),N,prob=prob)
+
+df = pop[selected,]
+table(df$diagn)
+```
+
+
+Now let's run the taxometric analysis.
+
+```{r study-3-run-taxometrics, cache=T}
+(rt_study3 = RunTaxometrics(df[,c("x1","x2","x3","x4","x5","diagn")]))
+```
+
+**So, in Study 3 the resulting mean CCFI is `r round(rt_study3$CCFI.mean,2)`, thus incorrectly favoring a categorical structure with very strong evidence.**
+
+
+--------------------------------------------
+--------------------------------------------
+
+
+
+
